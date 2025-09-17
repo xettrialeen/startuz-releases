@@ -18,6 +18,10 @@ on:
         required: false
         default: 'New release'
 
+permissions:
+  contents: write
+  releases: write
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
