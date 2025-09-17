@@ -32,19 +32,21 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: '' # Explicitly disable caching
+        cache: ''
         
     - name: Install dependencies
+      working-directory: frontend/startuz
       run: npm install
       
     - name: Build app
+      working-directory: frontend/startuz
       run: npm run build
       
     - name: Create dist.zip
       run: |
-        cd dist
-        zip -r ../dist.zip .
-        cd ..
+        cd frontend/startuz/dist
+        zip -r ../../../dist.zip .
+        cd ../../..
         
     - name: Set version
       id: version
