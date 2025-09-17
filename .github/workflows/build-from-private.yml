@@ -10,7 +10,7 @@ on:
         required: true
         default: 'xettrialeen/startuzSocial'
       version:
-        description: 'Release version'
+        description: 'Release version'  
         required: true
         default: '1.0.0'
       notes:
@@ -20,23 +20,67 @@ on:
 
 permissions:
   contents: write
-  releases: write
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
     steps:
+    - name: Debug Everything
+      run: |
+        echo "=== COMPLETE DEBUG ==="
+        echo "Event name: ${{ github.event_name }}"
+        echo "Event action: ${{ github.event.action }}"
+        echo "Trigger: ${{ github.event_name }}"
+        echo "Repository dispatch types: ${{ toJson(github.event.client_payload) }}"
+        echo "Workflow dispatch inputs: ${{ toJson(github.event.inputs) }}"
+        echo "Full event object: ${{ toJson(github.event) }}"
+        echo "Repository: ${{ github.repository }}"
+        echo "Actor: ${{ github.actor }}"
+        
+    - name: Set Variables
+      id: vars
+      run: |
+        if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+          echo "Using repository_dispatch values"
+          echo "source_repo=${{ github.event.client_payload.source_repo }}" >> $GITHUB_OUTPUT
+          echo "version=${{ github.event.client_payload.version }}" >> $GITHUB_OUTPUT  
+          echo "notes=${{ github.event.client_payload.notes }}" >> $GITHUB_OUTPUT
+        else
+          echo "Using workflow_dispatch values"
+          echo "source_repo=${{ github.event.inputs.source_repo }}" >> $GITHUB_OUTPUT
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          echo "notes=${{ github.event.inputs.notes }}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Show Variables
+      run: |
+        echo "Final variables:"
+        echo "Source repo: ${{ steps.vars.outputs.source_repo }}"
+        echo "Version: ${{ steps.vars.outputs.version }}"
+        echo "Notes: ${{ steps.vars.outputs.notes }}"
+        
+    - name: Test checkout first
+      run: |
+        echo "About to checkout: ${{ steps.vars.outputs.source_repo }}"
+        
     - name: Checkout private repo
       uses: actions/checkout@v4
       with:
-        repository: ${{ github.event.client_payload.source_repo || github.event.inputs.source_repo }}
+        repository: ${{ steps.vars.outputs.source_repo }}
         token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        
+    - name: Verify checkout
+      run: |
+        echo "Current directory contents:"
+        ls -la
+        echo "Looking for frontend/startuz:"
+        ls -la frontend/ || echo "No frontend directory"
+        ls -la frontend/startuz/ || echo "No frontend/startuz directory"
         
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: ''
         
     - name: Install dependencies
       working-directory: frontend/startuz
@@ -46,29 +90,25 @@ jobs:
       working-directory: frontend/startuz
       run: npm run build
       
+    - name: Verify build
+      run: |
+        echo "Checking if dist folder exists:"
+        ls -la frontend/startuz/dist/ || echo "No dist folder found"
+        
     - name: Create dist.zip
       run: |
         cd frontend/startuz/dist
         zip -r ../../../dist.zip .
         cd ../../..
-        
-    - name: Set version
-      id: version
-      run: |
-        if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-          echo "VERSION=${{ github.event.client_payload.version }}" >> $GITHUB_OUTPUT
-          echo "NOTES=${{ github.event.client_payload.notes }}" >> $GITHUB_OUTPUT
-        else
-          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          echo "NOTES=${{ github.event.inputs.notes }}" >> $GITHUB_OUTPUT
-        fi
+        echo "Created dist.zip:"
+        ls -lh dist.zip
         
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ steps.version.outputs.VERSION }}
-        name: Release v${{ steps.version.outputs.VERSION }}
-        body: ${{ steps.version.outputs.NOTES }}
+        tag_name: v${{ steps.vars.outputs.version }}
+        name: Release v${{ steps.vars.outputs.version }}
+        body: ${{ steps.vars.outputs.notes }}
         files: dist.zip
         draft: false
         prerelease: false
