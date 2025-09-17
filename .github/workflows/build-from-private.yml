@@ -36,7 +36,7 @@ jobs:
         
     - name: Install dependencies
       working-directory: frontend/startuz
-      run: npm install
+      run: npm install --legacy-peer-deps
       
     - name: Build app
       working-directory: frontend/startuz
