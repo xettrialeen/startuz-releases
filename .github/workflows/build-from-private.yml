@@ -32,19 +32,10 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
+        cache: '' # Explicitly disable caching
         
-    - name: Check for lock file and install dependencies
-      run: |
-        if [ -f package-lock.json ]; then
-          echo "Found package-lock.json, using npm ci"
-          npm ci
-        elif [ -f yarn.lock ]; then
-          echo "Found yarn.lock, using yarn install"
-          yarn install --frozen-lockfile
-        else
-          echo "No lock file found, using npm install"
-          npm install
-        fi
+    - name: Install dependencies
+      run: npm install
       
     - name: Build app
       run: npm run build
