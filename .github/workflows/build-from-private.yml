@@ -1,0 +1,52 @@
+name: Build and Release
+on:
+  repository_dispatch:
+    types: [build-release]
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: 'Source repository (owner/repo)'
+        required: true
+        default: 'your-username/your-private-repo'
+      version:
+        description: 'Release version'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout private repo
+      uses: actions/checkout@v4
+      with:
+        repository: xettrialeen/startuzSocial
+        token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build app
+      run: npm run build
+      
+    - name: Create dist.zip
+      run: |
+        cd dist
+        zip -r ../dist.zip .
+        cd ..
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.event.inputs.version || github.event.client_payload.version }}
+        name: Release v${{ github.event.inputs.version || github.event.client_payload.version }}
+        body: ${{ github.event.inputs.notes || github.event.client_payload.notes }}
+        files: dist.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
